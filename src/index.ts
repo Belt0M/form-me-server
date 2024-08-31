@@ -17,6 +17,18 @@ if (!JWT_SECRET) {
 	throw new Error('JWT_SECRET is not defined in the environment variables.')
 }
 
+app.post(
+	'/verify-token',
+	authenticateToken,
+	async (req: AuthenticatedRequest, res) => {
+		const user = await prisma.user.findUnique({where: {id: req.userId}})
+		if (!user) {
+			return res.status(401).json({error: 'Unauthorized'})
+		}
+		res.json({username: user.username})
+	}
+)
+
 app.post('/register', async (req, res) => {
 	const {username, password} = req.body
 	const hashedPassword = await bcrypt.hash(password, 10)
