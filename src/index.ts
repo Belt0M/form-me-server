@@ -27,32 +27,49 @@ app.post(
 			return res.status(401).json({error: 'Unauthorized'})
 		}
 
-		res.json({username: user.username})
+		res.json({
+			firstName: user.firstName,
+			lastName: user.lastName,
+			email: user.email,
+		})
 	}
 )
 
+app.post('/check-email', async (req, res) => {
+	const {email} = req.body
+	const user = await prisma.user.findUnique({where: {email}})
+
+	if (user) {
+		return res.status(400).json({error: 'Email is already taken'})
+	}
+
+	res.status(200).json({message: 'Email is available'})
+})
+
 app.post('/register', async (req, res) => {
-	const {username, password} = req.body
+	const {firstName, lastName, email, password} = req.body
 	const hashedPassword = await bcrypt.hash(password, 10)
 
 	try {
 		const user = await prisma.user.create({
 			data: {
-				username,
+				firstName,
+				lastName,
+				email,
 				password: hashedPassword,
 			},
 		})
 		const token = jwt.sign({userId: user.id}, JWT_SECRET)
 
-		res.status(201).json({username: user.username, token})
+		res.status(201).json({email: user.email, token})
 	} catch (error) {
-		res.status(400).json({error: 'Username already exists'})
+		res.status(400).json({error: 'Email already exists'})
 	}
 })
 
 app.post('/login', async (req, res) => {
-	const {username, password} = req.body
-	const user = await prisma.user.findUnique({where: {username}})
+	const {email, password} = req.body
+	const user = await prisma.user.findUnique({where: {email}})
 
 	if (!user) {
 		return res.status(404).json({error: 'User not found'})
@@ -66,7 +83,7 @@ app.post('/login', async (req, res) => {
 
 	const token = jwt.sign({userId: user.id}, JWT_SECRET)
 
-	res.json({username: user.username, token})
+	res.json({email: user.email, token})
 })
 
 app.post(
