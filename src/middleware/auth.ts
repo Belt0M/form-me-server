@@ -29,6 +29,7 @@ export const authenticateToken = (
 		}
 
 		req.userId = user.userId
+
 		next()
 	})
 }

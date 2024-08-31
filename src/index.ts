@@ -22,9 +22,11 @@ app.post(
 	authenticateToken,
 	async (req: AuthenticatedRequest, res) => {
 		const user = await prisma.user.findUnique({where: {id: req.userId}})
+
 		if (!user) {
 			return res.status(401).json({error: 'Unauthorized'})
 		}
+
 		res.json({username: user.username})
 	}
 )
@@ -32,6 +34,7 @@ app.post(
 app.post('/register', async (req, res) => {
 	const {username, password} = req.body
 	const hashedPassword = await bcrypt.hash(password, 10)
+
 	try {
 		const user = await prisma.user.create({
 			data: {
@@ -40,6 +43,7 @@ app.post('/register', async (req, res) => {
 			},
 		})
 		const token = jwt.sign({userId: user.id}, JWT_SECRET)
+
 		res.status(201).json({username: user.username, token})
 	} catch (error) {
 		res.status(400).json({error: 'Username already exists'})
@@ -49,14 +53,19 @@ app.post('/register', async (req, res) => {
 app.post('/login', async (req, res) => {
 	const {username, password} = req.body
 	const user = await prisma.user.findUnique({where: {username}})
+
 	if (!user) {
 		return res.status(404).json({error: 'User not found'})
 	}
+
 	const isPasswordValid = await bcrypt.compare(password, user.password)
+
 	if (!isPasswordValid) {
 		return res.status(401).json({error: 'Invalid password'})
 	}
+
 	const token = jwt.sign({userId: user.id}, JWT_SECRET)
+
 	res.json({username: user.username, token})
 })
 
@@ -89,6 +98,7 @@ app.get('/forms', authenticateToken, async (req: AuthenticatedRequest, res) => {
 			userId: req.userId,
 		},
 	})
+
 	res.json(forms)
 })
 
@@ -100,9 +110,11 @@ app.get(
 		const form = await prisma.form.findUnique({
 			where: {id: Number(id), userId: req.userId},
 		})
+
 		if (!form) {
 			return res.status(404).json({error: 'Form not found'})
 		}
+
 		res.json(form)
 	}
 )
@@ -118,12 +130,15 @@ app.put('/forms/:id', async (req, res) => {
 			content,
 		},
 	})
+
 	res.json(form)
 })
 
 app.delete('/forms/:id', async (req, res) => {
 	const {id} = req.params
+
 	await prisma.form.delete({where: {id: Number(id)}})
+
 	res.status(204).end()
 })
 
