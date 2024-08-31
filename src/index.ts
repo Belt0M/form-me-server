@@ -1,14 +1,21 @@
 import {PrismaClient} from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import cors from 'cors'
 import express from 'express'
 import jwt from 'jsonwebtoken'
 import {AuthenticatedRequest, authenticateToken} from './middleware/auth'
 
 const prisma = new PrismaClient()
 const app = express()
+
+app.use(cors())
 app.use(express.json())
 
 const JWT_SECRET = process.env.JWT_SECRET
+
+if (!JWT_SECRET) {
+	throw new Error('JWT_SECRET is not defined in the environment variables.')
+}
 
 app.post('/register', async (req, res) => {
 	const {username, password} = req.body
@@ -20,7 +27,8 @@ app.post('/register', async (req, res) => {
 				password: hashedPassword,
 			},
 		})
-		res.status(201).json(user)
+		const token = jwt.sign({userId: user.id}, JWT_SECRET)
+		res.status(201).json({username: user.username, token})
 	} catch (error) {
 		res.status(400).json({error: 'Username already exists'})
 	}
@@ -37,7 +45,7 @@ app.post('/login', async (req, res) => {
 		return res.status(401).json({error: 'Invalid password'})
 	}
 	const token = jwt.sign({userId: user.id}, JWT_SECRET)
-	res.json({token})
+	res.json({username: user.username, token})
 })
 
 app.post(
@@ -63,6 +71,15 @@ app.post(
 	}
 )
 
+app.get('/forms', authenticateToken, async (req: AuthenticatedRequest, res) => {
+	const forms = await prisma.form.findMany({
+		where: {
+			userId: req.userId,
+		},
+	})
+	res.json(forms)
+})
+
 app.get(
 	'/forms/:id',
 	authenticateToken,
@@ -77,15 +94,6 @@ app.get(
 		res.json(form)
 	}
 )
-
-app.get('/forms/:id', async (req, res) => {
-	const {id} = req.params
-	const form = await prisma.form.findUnique({where: {id: Number(id)}})
-	if (!form) {
-		return res.status(404).json({error: 'Form not found'})
-	}
-	res.json(form)
-})
 
 app.put('/forms/:id', async (req, res) => {
 	const {id} = req.params
